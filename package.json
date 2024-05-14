@@ -1,0 +1,20 @@
+{
+  "name": "com.azzazello.sceneswitcher",
+  "version": "1.0.0",
+  "displayName": "Scene Switcher",
+  "description": "A description of your Scene Switcher module",
+  "unity": "2020.3",
+  "dependencies": {
+    "com.unity.addressables": "1.21.20"
+  },
+  "keywords": [
+    "scene",
+    "switcher",
+    "unity"
+  ],
+  "author": {
+    "name": "Azzazelloqq",
+    "email": "bog22232@ya.ru",
+    "url": "https://github.com/Azzazelloqq"
+  }
+}
