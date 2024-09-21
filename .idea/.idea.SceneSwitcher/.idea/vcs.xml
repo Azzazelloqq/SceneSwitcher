@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../.." vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../Disposable" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../LocalSaveSystem" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../MVP" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../MVVM" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../ResourceLoader" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../TickHandler" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../Utils" vcs="Git" />
+  </component>
+</project>
