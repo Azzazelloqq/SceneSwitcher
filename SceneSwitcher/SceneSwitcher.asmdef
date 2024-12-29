@@ -1,6 +1,6 @@
 {
     "name": "SceneSwitcher",
-    "rootNamespace": "",
+    "rootNamespace": "SceneSwitcher",
     "references": [
 	"Unity.Addressables",
 	"Unity.ResourceManager"
