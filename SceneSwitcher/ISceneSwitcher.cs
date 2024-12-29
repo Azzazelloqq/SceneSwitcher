@@ -15,9 +15,10 @@ public interface ISceneSwitcher : IDisposable
     public Task<TContext> SwitchToSceneAsync<TContext>(string sceneId,
         LoadSceneMode sceneMode = LoadSceneMode.Single) where TContext : ISceneContext;
 
-    public void SwitchToScene(string sceneId, LoadSceneMode sceneMode);
-
-    public void OnSceneStartedToSwitch(string sceneId);
-    public void OnSceneSwitched(string sceneId);
+    public void SwitchToScene(string sceneId, LoadSceneMode sceneMode = LoadSceneMode.Single);
+    public Task SwitchToSceneAsync(string sceneId, LoadSceneMode sceneMode = LoadSceneMode.Single);
+    
+    public void UnloadScene(string sceneId);
+    public Task UnloadSceneAsync(string sceneId);
 }
 }
