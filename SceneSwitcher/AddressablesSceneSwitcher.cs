@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
 
@@ -23,10 +25,10 @@ public class AddressablesSceneSwitcher : ISceneSwitcher
         SceneStartedToSwitch = null;
     }
 
-    public TContext SwitchToScene<TContext>(string sceneId, LoadSceneMode sceneMode = LoadSceneMode.Single)
+    public TContext SwitchToScene<TContext>(string sceneId, LoadSceneMode sceneMode = LoadSceneMode.Single, bool activateOnLoad = true)
         where TContext : ISceneContext
     {
-        var loadOperation = Addressables.LoadSceneAsync(sceneId, sceneMode);
+        var loadOperation = Addressables.LoadSceneAsync(sceneId, sceneMode, activateOnLoad);
 
         loadOperation.WaitForCompletion();
 
@@ -39,11 +41,33 @@ public class AddressablesSceneSwitcher : ISceneSwitcher
         return sceneContext;
     }
 
-    public async Task<TContext> SwitchToSceneAsync<TContext>(string sceneId,
-        LoadSceneMode sceneMode = LoadSceneMode.Single) where TContext : ISceneContext
+    public async Task<TContext> SwitchToSceneAsync<TContext>(
+        string sceneId,
+        CancellationToken token,
+        LoadSceneMode sceneMode = LoadSceneMode.Single,
+        bool activateOnLoad = true) where TContext : ISceneContext
     {
-        var sceneInstance = await Addressables.LoadSceneAsync(sceneId, sceneMode).Task;
+        var loadSceneTask = Addressables.LoadSceneAsync(sceneId, sceneMode, activateOnLoad);
 
+        while (loadSceneTask.Status != AsyncOperationStatus.Succeeded)
+        {
+            if (loadSceneTask.Status == AsyncOperationStatus.Failed)
+            {
+                Debug.LogError($"Failed to load scene {sceneId}");
+                return default;
+            }
+            
+            if (token.IsCancellationRequested)
+            {
+                Addressables.Release(loadSceneTask);
+                return default;
+            }
+            
+            await Task.Yield();
+        }
+
+        var sceneInstance = loadSceneTask.Result;
+        _loadedScenes[sceneId] = sceneInstance;
         var rootGameObjects = sceneInstance.Scene.GetRootGameObjects();
         var sceneContext = GetSceneContext<TContext>(rootGameObjects, sceneId);
 
@@ -52,11 +76,11 @@ public class AddressablesSceneSwitcher : ISceneSwitcher
         return sceneContext;
     }
 
-    public void SwitchToScene(string sceneId, LoadSceneMode sceneMode = LoadSceneMode.Single)
+    public void SwitchToScene(string sceneId, LoadSceneMode sceneMode = LoadSceneMode.Single, bool activateOnLoad = true)
     {
         SceneStartedToSwitch?.Invoke(sceneId);
         
-        var loadOperation = Addressables.LoadSceneAsync(sceneId, sceneMode);
+        var loadOperation = Addressables.LoadSceneAsync(sceneId, sceneMode, activateOnLoad);
 
         loadOperation.WaitForCompletion();
 
@@ -66,12 +90,34 @@ public class AddressablesSceneSwitcher : ISceneSwitcher
         SceneSwitched?.Invoke(sceneId);
     }
 
-    public async Task SwitchToSceneAsync(string sceneId, LoadSceneMode sceneMode = LoadSceneMode.Single)
+    public async Task SwitchToSceneAsync(
+        string sceneId,
+        CancellationToken token,
+        LoadSceneMode sceneMode = LoadSceneMode.Single,
+        bool activateOnLoad = true)
     {
         SceneStartedToSwitch?.Invoke(sceneId);
 
-        var sceneInstance = await Addressables.LoadSceneAsync(sceneId, sceneMode).Task;
+        var loadSceneTask = Addressables.LoadSceneAsync(sceneId, sceneMode, activateOnLoad);
 
+        while (loadSceneTask.Status != AsyncOperationStatus.Succeeded)
+        {
+            if (loadSceneTask.Status == AsyncOperationStatus.Failed)
+            {
+                Debug.LogError($"Failed to load scene {sceneId}");
+                return;
+            }
+            
+            if (token.IsCancellationRequested)
+            {
+                Addressables.Release(loadSceneTask);
+                return;
+            }
+            
+            await Task.Yield();
+        }
+
+        var sceneInstance = loadSceneTask.Result;
         _loadedScenes[sceneId] = sceneInstance;
         
         SceneSwitched?.Invoke(sceneId);
@@ -90,17 +136,34 @@ public class AddressablesSceneSwitcher : ISceneSwitcher
         SceneUnloaded?.Invoke(sceneId);
     }
 
-    public async Task UnloadSceneAsync(string sceneId)
+    public async Task UnloadSceneAsync(string sceneId, CancellationToken token)
     {
         SceneUnloadStated?.Invoke(sceneId);
         var sceneInstance = _loadedScenes[sceneId];
         
-        await Addressables.UnloadSceneAsync(sceneInstance).Task;
+        var unloadSceneTask = Addressables.UnloadSceneAsync(sceneInstance);
+
+        while (unloadSceneTask.Status != AsyncOperationStatus.Succeeded)
+        {
+            if (unloadSceneTask.Status == AsyncOperationStatus.Failed)
+            {
+                Debug.LogError($"Failed to unload scene {sceneId}");
+                return;
+            }
+            
+            if (token.IsCancellationRequested)
+            {
+                Addressables.Release(unloadSceneTask);
+                return;
+            }
+            
+            await Task.Yield();
+        }
         
         SceneUnloaded?.Invoke(sceneId);
     }
 
-    private T GetSceneContext<T>(GameObject[] rootObjects, string sceneId)
+    private static T GetSceneContext<T>(GameObject[] rootObjects, string sceneId)
     {
         foreach (var rootGameObject in rootObjects)
         {
@@ -110,7 +173,7 @@ public class AddressablesSceneSwitcher : ISceneSwitcher
             }
         }
 
-        Console.Error.Write($"Scene {sceneId} does not have a sceneContext {typeof(T).FullName}");
+        Debug.LogError($"Scene {sceneId} does not have a sceneContext {typeof(T).FullName}");
         return default;
     }
 }
