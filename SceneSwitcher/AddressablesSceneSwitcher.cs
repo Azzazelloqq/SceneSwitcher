@@ -14,8 +14,15 @@ public class AddressablesSceneSwitcher : ISceneSwitcher
 {
     public event Action<string> SceneStartedToSwitch;
     public event Action<string> SceneSwitched;
-    public event Action<string> SceneUnloadStated;
+    public event Action<string> SceneStartedToUnload;
     public event Action<string> SceneUnloaded;
+
+    [Obsolete("Use SceneStartedToUnload instead.")]
+    public event Action<string> SceneUnloadStated
+    {
+        add => SceneStartedToUnload += value;
+        remove => SceneStartedToUnload -= value;
+    }
 
     private readonly Dictionary<string, SceneInstance> _loadedScenes = new();
     
@@ -23,6 +30,9 @@ public class AddressablesSceneSwitcher : ISceneSwitcher
     {
         SceneSwitched = null;
         SceneStartedToSwitch = null;
+        SceneStartedToUnload = null;
+        SceneUnloaded = null;
+        _loadedScenes.Clear();
     }
 
     public TContext SwitchToScene<TContext>(string sceneId, LoadSceneMode sceneMode = LoadSceneMode.Single, bool activateOnLoad = true)
@@ -67,7 +77,6 @@ public class AddressablesSceneSwitcher : ISceneSwitcher
         }
 
         var sceneInstance = loadSceneTask.Result;
-        _loadedScenes[sceneId] = sceneInstance;
         var rootGameObjects = sceneInstance.Scene.GetRootGameObjects();
         var sceneContext = GetSceneContext<TContext>(rootGameObjects, sceneId);
 
@@ -125,21 +134,38 @@ public class AddressablesSceneSwitcher : ISceneSwitcher
     
     public void UnloadScene(string sceneId)
     {
-        SceneUnloadStated?.Invoke(sceneId);
-        
-        var sceneInstance = _loadedScenes[sceneId];
+        SceneStartedToUnload?.Invoke(sceneId);
+
+        if (!_loadedScenes.TryGetValue(sceneId, out var sceneInstance))
+        {
+            Debug.LogError($"Scene {sceneId} is not loaded by this switcher");
+            return;
+        }
         
         var unloadOperation = Addressables.UnloadSceneAsync(sceneInstance);
         
         unloadOperation.WaitForCompletion();
+
+        if (unloadOperation.Status == AsyncOperationStatus.Failed)
+        {
+            Debug.LogError($"Failed to unload scene {sceneId}");
+            return;
+        }
+
+        _loadedScenes.Remove(sceneId);
         
         SceneUnloaded?.Invoke(sceneId);
     }
 
     public async Task UnloadSceneAsync(string sceneId, CancellationToken token)
     {
-        SceneUnloadStated?.Invoke(sceneId);
-        var sceneInstance = _loadedScenes[sceneId];
+        SceneStartedToUnload?.Invoke(sceneId);
+
+        if (!_loadedScenes.TryGetValue(sceneId, out var sceneInstance))
+        {
+            Debug.LogError($"Scene {sceneId} is not loaded by this switcher");
+            return;
+        }
         
         var unloadSceneTask = Addressables.UnloadSceneAsync(sceneInstance);
 
@@ -159,7 +185,8 @@ public class AddressablesSceneSwitcher : ISceneSwitcher
             
             await Task.Yield();
         }
-        
+
+        _loadedScenes.Remove(sceneId);
         SceneUnloaded?.Invoke(sceneId);
     }
 

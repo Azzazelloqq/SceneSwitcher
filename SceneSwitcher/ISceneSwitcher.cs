@@ -9,6 +9,8 @@ public interface ISceneSwitcher : IDisposable
 {
     public event Action<string> SceneStartedToSwitch;
     public event Action<string> SceneSwitched;
+    public event Action<string> SceneStartedToUnload;
+    public event Action<string> SceneUnloaded;
 
     public TContext SwitchToScene<TContext>(
         string sceneId,

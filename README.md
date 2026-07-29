@@ -48,9 +48,10 @@ using System.Threading;
 using SceneSwitcher;
 using UnityEngine.SceneManagement;
 
-using var switcher = new AddressablesSceneSwitcher();
+var sceneSwitcher = new AddressablesSceneSwitcher();
+using var navigator = new SceneNavigator(sceneSwitcher);
 
-GameSceneContext context = await switcher.SwitchToSceneAsync<GameSceneContext>(
+GameSceneContext context = await navigator.NavigateToAsync<GameSceneContext>(
     sceneId: "GameScene",
     token: cancellationToken,
     sceneMode: LoadSceneMode.Single);
@@ -59,15 +60,15 @@ GameSceneContext context = await switcher.SwitchToSceneAsync<GameSceneContext>(
 ## Scene transitions
 
 ```csharp
-switcher.SceneStartedToSwitch += sceneId => Debug.Log($"Loading {sceneId}");
-switcher.SceneSwitched += sceneId => Debug.Log($"Loaded {sceneId}");
+navigator.SceneStartedToSwitch += sceneId => Debug.Log($"Loading {sceneId}");
+navigator.SceneSwitched += sceneId => Debug.Log($"Loaded {sceneId}");
 
-await switcher.SwitchToSceneAsync(
+await navigator.NavigateToAsync(
     "MainMenu",
     cancellationToken,
     LoadSceneMode.Additive);
 
-await switcher.UnloadSceneAsync("MainMenu", cancellationToken);
+await navigator.UnloadAsync("MainMenu", cancellationToken);
 ```
 
 ## Notes
@@ -75,10 +76,13 @@ await switcher.UnloadSceneAsync("MainMenu", cancellationToken);
 - `sceneId` must be a valid Addressables scene key.
 - The typed overload searches root objects in the loaded scene for the requested
   `ISceneContext` component.
-- Dispose the switcher when the owner no longer needs it; it clears event subscriptions.
+- Give application code `ISceneNavigator`; keep `ISceneSwitcher` and its
+  `AddressablesSceneSwitcher` implementation in the composition root.
+- `Dispose` clears all event subscriptions and references to tracked scenes.
+  Explicitly unload scenes before disposing the navigator.
 
 ## API
 
-`ISceneSwitcher` exposes synchronous and asynchronous load/unload operations,
-while `ISceneFactory` defines a separate abstraction for creating `IScene`
-instances.
+`ISceneNavigator` is the application-facing navigation API. `ISceneSwitcher`
+is an implementation-level contract, while `ISceneFactory` defines a separate
+abstraction for creating `IScene` instances.
