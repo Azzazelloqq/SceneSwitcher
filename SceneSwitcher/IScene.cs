@@ -1,17 +1,21 @@
-﻿using System;
+using System;
 using System.Threading;
-using System.Threading.Tasks;
+#if PROJECT_SUPPORT_UNITASK
+using SceneSwitcherTask = Cysharp.Threading.Tasks.UniTask;
+#else
+using SceneSwitcherTask = System.Threading.Tasks.Task;
+#endif
 
 namespace SceneSwitcher
 {
 public interface IScene : IDisposable
 {
-    public string SceneId { get; }
-    public string SceneResourceId { get; }
+    string SceneId { get; }
+    string SceneResourceId { get; }
     protected internal ISceneContext SceneContext { get; }
     protected internal ISceneSwitcher SceneSwitcher { get; }
 
-    public Task InitializeAsync(CancellationToken token);
-    public void Initialize();
+    SceneSwitcherTask InitializeAsync(CancellationToken token);
+    void Initialize();
 }
 }

@@ -1,34 +1,41 @@
-﻿using System;
+using System;
 using System.Threading;
+#if PROJECT_SUPPORT_UNITASK
+using SceneSwitcherTask = Cysharp.Threading.Tasks.UniTask;
+#else
 using System.Threading.Tasks;
+using SceneSwitcherTask = System.Threading.Tasks.Task;
+#endif
 using UnityEngine.SceneManagement;
 
 namespace SceneSwitcher
 {
 public interface ISceneSwitcher : IDisposable
 {
-    public event Action<string> SceneStartedToSwitch;
-    public event Action<string> SceneSwitched;
-    public event Action<string> SceneStartedToUnload;
-    public event Action<string> SceneUnloaded;
+    event Action<string> SceneStartedToSwitch;
+    event Action<string> SceneSwitched;
+    event Action<string> SceneStartedToUnload;
+    event Action<string> SceneUnloaded;
 
-    public TContext SwitchToScene<TContext>(
+    void SwitchToScene<TContext>(
         string sceneId,
+        Action<TContext> onComplete,
         LoadSceneMode sceneMode = LoadSceneMode.Single,
         bool activateOnLoad = true) where TContext : ISceneContext;
 
-    public Task<TContext> SwitchToSceneAsync<TContext>( string sceneId,
+#if PROJECT_SUPPORT_UNITASK
+    Cysharp.Threading.Tasks.UniTask<TContext> SwitchToSceneAsync<TContext>(
+#else
+    Task<TContext> SwitchToSceneAsync<TContext>(
+#endif
+        string sceneId,
         CancellationToken token,
         LoadSceneMode sceneMode = LoadSceneMode.Single,
         bool activateOnLoad = true) where TContext : ISceneContext;
 
-    public void SwitchToScene(string sceneId, LoadSceneMode sceneMode = LoadSceneMode.Single, bool activateOnLoad = true);
-    public Task SwitchToSceneAsync( string sceneId,
-        CancellationToken token,
-        LoadSceneMode sceneMode = LoadSceneMode.Single,
-        bool activateOnLoad = true);
-    
-    public void UnloadScene(string sceneId);
-    public Task UnloadSceneAsync(string sceneId, CancellationToken token);
+    void SwitchToScene(string sceneId, Action onComplete, LoadSceneMode sceneMode = LoadSceneMode.Single, bool activateOnLoad = true);
+    SceneSwitcherTask SwitchToSceneAsync(string sceneId, CancellationToken token, LoadSceneMode sceneMode = LoadSceneMode.Single, bool activateOnLoad = true);
+    void UnloadScene(string sceneId, Action onComplete);
+    SceneSwitcherTask UnloadSceneAsync(string sceneId, CancellationToken token);
 }
 }
